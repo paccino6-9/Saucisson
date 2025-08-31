@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cave à Saucisson</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <header>
+        <h1>Contrôle de la Cave à Saucisson</h1>
+    </header>
+    <main>
+        <section id="sensor-data">
+            <h2>Données du Capteur</h2>
+            <p>Température: <span id="temperature">--</span> °C</p>
+            <p>Humidité: <span id="humidity">--</span> %</p>
+            <p>Pression: <span id="pressure">--</span> hPa</p>
+        </section>
+        <section id="relay-controls">
+            <h2>Contrôles des Relais</h2>
+            <button onclick="toggleRelay('humidifier')">Humidificateur</button>
+            <button onclick="toggleRelay('fan')">Ventilateur</button>
+            <button onclick="toggleRelay('auxiliary')">Auxiliaire</button>
+        </section>
+    </main>
+    <footer>
+        <p>&copy; 2023 Cave à Saucisson</p>
+    </footer>
+    <script>
+        function toggleRelay(relay) {
+            fetch(`/toggle_relay/${relay}`, { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    console.log(data.message);
+                });
+        }
+
+        function updateSensorData() {
+            fetch('/sensor_data')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('temperature').innerText = data.temperature;
+                    document.getElementById('humidity').innerText = data.humidity;
+                    document.getElementById('pressure').innerText = data.pressure;
+                });
+        }
+
+        setInterval(updateSensorData, 5000);
+        updateSensorData();
+    </script>
+</body>
+</html>
