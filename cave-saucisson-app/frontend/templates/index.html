@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cave à Saucisson</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
     <header>
@@ -17,11 +18,25 @@
             <p>Humidité: <span id="humidity">--</span> %</p>
             <p>Pression: <span id="pressure">--</span> hPa</p>
         </section>
+        <section id="setpoints">
+            <h2>Consignes</h2>
+            <form id="setpoint-form" onsubmit="setSetpoints(event)">
+                <label for="temp-setpoint">Température souhaitée (°C):</label>
+                <input type="number" id="temp-setpoint" name="temp-setpoint" step="0.1" required>
+                <label for="humidity-setpoint">Humidité souhaitée (%):</label>
+                <input type="number" id="humidity-setpoint" name="humidity-setpoint" step="1" required>
+                <button type="submit" class="btn">Valider</button>
+            </form>
+        </section>
         <section id="relay-controls">
             <h2>Contrôles des Relais</h2>
-            <button onclick="toggleRelay('humidifier')">Humidificateur</button>
-            <button onclick="toggleRelay('fan')">Ventilateur</button>
-            <button onclick="toggleRelay('auxiliary')">Auxiliaire</button>
+            <button class="btn" onclick="toggleRelay('humidifier')">Humidificateur</button>
+            <button class="btn" onclick="toggleRelay('fan')">Ventilateur</button>
+            <button class="btn" onclick="toggleRelay('auxiliary')">Auxiliaire</button>
+        </section>
+        <section id="chart-section">
+            <h2>Suivi des Données</h2>
+            <canvas id="sensorChart" width="400" height="200"></canvas>
         </section>
     </main>
     <footer>
@@ -32,9 +47,54 @@
             fetch(`/toggle_relay/${relay}`, { method: 'POST' })
                 .then(response => response.json())
                 .then(data => {
-                    console.log(data.message);
+                    alert(data.message);
                 });
         }
+
+        function setSetpoints(event) {
+            event.preventDefault();
+            const temp = document.getElementById('temp-setpoint').value;
+            const humidity = document.getElementById('humidity-setpoint').value;
+            fetch('/setpoints', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ temperature: temp, humidity: humidity })
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert(data.message);
+            });
+        }
+
+        // Chart.js setup
+        const ctx = document.getElementById('sensorChart').getContext('2d');
+        const sensorChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [
+                    {
+                        label: 'Température (°C)',
+                        data: [],
+                        borderColor: 'rgba(255,99,132,1)',
+                        fill: false
+                    },
+                    {
+                        label: 'Humidité (%)',
+                        data: [],
+                        borderColor: 'rgba(54,162,235,1)',
+                        fill: false
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    x: { title: { display: true, text: 'Heure' } },
+                    y: { title: { display: true, text: 'Valeur' } }
+                }
+            }
+        });
 
         function updateSensorData() {
             fetch('/sensor_data')
@@ -43,6 +103,20 @@
                     document.getElementById('temperature').innerText = data.temperature;
                     document.getElementById('humidity').innerText = data.humidity;
                     document.getElementById('pressure').innerText = data.pressure;
+
+                    // Ajout des données au graphique
+                    const now = new Date().toLocaleTimeString();
+                    sensorChart.data.labels.push(now);
+                    sensorChart.data.datasets[0].data.push(data.temperature);
+                    sensorChart.data.datasets[1].data.push(data.humidity);
+
+                    // Limite à 20 points
+                    if (sensorChart.data.labels.length > 20) {
+                        sensorChart.data.labels.shift();
+                        sensorChart.data.datasets[0].data.shift();
+                        sensorChart.data.datasets[1].data.shift();
+                    }
+                    sensorChart.update();
                 });
         }
 
